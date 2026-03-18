@@ -14,20 +14,30 @@ struct MemBarApp: App {
             MemoryMenuView(monitor: monitor)
         } label: {
             HStack(spacing: 4) {
-                Text(monitor.menuBarDisplayText)
-                    .monospacedDigit()
+                Image(systemName: pressureIcon)
+                    .imageScale(.large) // Or .small / .medium
+                    .symbolRenderingMode(.palette)
+                    // .foregroundStyle(pressureColor)
             }
         }
         .menuBarExtraStyle(.window)
     }
 
-    private var pressureColor: Color {
+    private var pressureIcon: String {
         switch monitor.pressureLevel {
-        case .normal: return .green
-        case .warning: return .yellow
-        case .critical: return .red
+        case .normal: return "checkmark.circle"
+        case .warning: return "exclamationmark.triangle"
+        case .critical: return "xmark.circle"
         }
     }
+
+    // private var pressureColor: Color {
+    //     switch monitor.pressureLevel {
+    //     case .normal: return .green
+    //     case .warning: return .orange
+    //     case .critical: return .red
+    //     }
+    // }
 
     private func registerAsLoginItemIfNeeded() {
         guard #available(macOS 13.0, *) else { return }
