@@ -234,19 +234,16 @@ private struct ActionsSection: View {
 
     var body: some View {
         HStack {
-            Button(action: { monitor.refresh() }) {
-                Label("Refresh", systemImage: "arrow.clockwise")
+            Button(action: { NSApplication.shared.terminate(nil) }) {
+                Text("Quit")
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
+            .keyboardShortcut("q", modifiers: .command)
 
             Spacer()
 
-            Button(action: { NSApplication.shared.terminate(nil) }) {
-                Label("Quit", systemImage: "xmark.circle")
-            }
-            .buttonStyle(.borderless)
+            Text("⌘Q")
         }
-        .font(.subheadline)
     }
 }
 
