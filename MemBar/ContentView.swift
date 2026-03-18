@@ -41,19 +41,13 @@ private struct HeroSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(alignment: .firstTextBaseline, spacing: 2) {
-                        Text(usedGBText)
-                            .font(.system(size: 42, weight: .medium, design: .rounded))
-                            .monospacedDigit()
-                        Text("GB")
-                            .font(.system(size: 24, weight: .regular))
-                            .foregroundColor(.secondary)
-                    }
-
-                    Text("of \(monitor.formatBytesWhole(monitor.totalBytes)) used")
-                        .font(.subheadline)
+            HStack(alignment: .center) {
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text(usedGBText)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .monospacedDigit()
+                    Text("GB")
+                        .font(.system(size: 14, weight: .regular))
                         .foregroundColor(.secondary)
                 }
 
