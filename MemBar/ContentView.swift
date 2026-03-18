@@ -30,7 +30,7 @@ struct MemoryMenuView: View {
             ActionsSection(monitor: monitor)
         }
         .padding(12)
-        .frame(width: 280)
+        .frame(width: 240)
     }
 }
 
@@ -300,5 +300,5 @@ private struct DetailRow: View {
 
 #Preview {
     MemoryMenuView(monitor: MemoryMonitor())
-        .frame(width: 280)
+        .frame(width: 240)
 }
