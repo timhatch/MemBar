@@ -75,28 +75,20 @@ private struct PressureBadge: View {
                 .font(.caption)
             Text(level.rawValue)
                 .font(.caption)
-                .fontWeight(.medium)
+                .fontWeight(.bold)
         }
-        .foregroundColor(foregroundColor)
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
+        .foregroundColor(.white)
         .background(backgroundColor)
         .clipShape(Capsule())
     }
 
-    private var foregroundColor: Color {
-        switch level {
-        case .normal: return .green
-        case .warning: return .orange
-        case .critical: return .red
-        }
-    }
-
     private var backgroundColor: Color {
         switch level {
-        case .normal: return .green.opacity(0.15)
-        case .warning: return .orange.opacity(0.15)
-        case .critical: return .red.opacity(0.15)
+        case .normal:   return .green   
+        case .warning:  return .orange  
+        case .critical: return .red     
         }
     }
 
