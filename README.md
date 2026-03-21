@@ -17,7 +17,7 @@ Forked from https://github.com/FetzerJack/MemBar
   - Wired, Compressed, Active, Inactive memory
   - Swap usage
   - Page ins / Page outs
-- **Smart polling** - Refreshes every 5 seconds on power, 15 seconds on battery
+- **Smart polling** - Refreshes every 30 seconds on power, 60 seconds on battery. Speeds up to 5 seconds while the popover is open. Top process data is only fetched when the popover is visible.
 - **Auto-start on login** - Registers automatically on first launch
 - **Native macOS design** - Built with SwiftUI, follows Apple HIG
 
@@ -42,6 +42,14 @@ MemBar reads memory data directly from macOS using Mach kernel APIs:
 - **top / ps** - Top memory-consuming processes with accurate memory values
 
 Memory Used is calculated to match Activity Monitor: `App Memory + Wired + Compressed`, where App Memory = `internal_page_count - purgeable_count`.
+
+### Energy Efficiency
+
+MemBar is designed to minimise energy impact when idle:
+- Polling adapts to popover visibility — fast updates (5s) only while the user is viewing data, otherwise slow (30s/60s)
+- Process enumeration (`top`/`ps`) runs only when the popover is open
+- Process enumeration is offloaded to a background queue to avoid blocking the main thread
+- All state updates are batched into a single publish per refresh cycle
 
 
 ## Privacy
