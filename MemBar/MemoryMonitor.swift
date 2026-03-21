@@ -24,9 +24,6 @@ final class MemoryMonitor: ObservableObject {
     // MARK: - Top Processes
     @Published var topProcesses: [(name: String, bytes: UInt64)] = []
 
-    // MARK: - Display
-    @Published var menuBarDisplayText: String = "—"
-
     // MARK: - Power State
     @Published var onACPower: Bool = true
 
@@ -259,7 +256,6 @@ final class MemoryMonitor: ObservableObject {
             pressureLevel = .normal
         }
 
-        menuBarDisplayText = formatBytesShort(usedBytes)
     }
 
     // MARK: - Formatting
