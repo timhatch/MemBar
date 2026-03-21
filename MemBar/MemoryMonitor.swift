@@ -24,6 +24,7 @@ final class MemoryMonitor: ObservableObject {
 
     private var refreshTimer: Timer?
     private var runLoopSource: CFRunLoopSource?
+    var popoverVisible = false
 
     enum PressureLevel: String {
         case normal = "Normal"
@@ -96,7 +97,9 @@ final class MemoryMonitor: ObservableObject {
         var s = snapshot
         readVMStats(&s)
         readSwap(&s)
-        readTopProcesses(&s)
+        if popoverVisible {
+            readTopProcesses(&s)
+        }
         updatePowerState(&s)
         updateComputedValues(&s)
         snapshot = s

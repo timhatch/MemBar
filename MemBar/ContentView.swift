@@ -31,6 +31,8 @@ struct MemoryMenuView: View {
         }
         .padding(12)
         .frame(width: 240)
+        .onAppear { monitor.popoverVisible = true }
+        .onDisappear { monitor.popoverVisible = false }
     }
 }
 
