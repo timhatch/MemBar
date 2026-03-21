@@ -3,29 +3,24 @@ import IOKit.ps
 import Combine
 
 final class MemoryMonitor: ObservableObject {
-    // MARK: - Memory State
-    @Published var usedBytes: UInt64 = 0
-    @Published var wiredBytes: UInt64 = 0
-    @Published var activeBytes: UInt64 = 0
-    @Published var inactiveBytes: UInt64 = 0
-    @Published var compressedBytes: UInt64 = 0
-    @Published var freeBytes: UInt64 = 0
-    @Published var totalBytes: UInt64 = 0
-    @Published var availableBytes: UInt64 = 0
+    struct MemorySnapshot {
+        var usedBytes: UInt64 = 0
+        var wiredBytes: UInt64 = 0
+        var activeBytes: UInt64 = 0
+        var inactiveBytes: UInt64 = 0
+        var compressedBytes: UInt64 = 0
+        var freeBytes: UInt64 = 0
+        var totalBytes: UInt64 = 0
+        var availableBytes: UInt64 = 0
+        var swapUsedBytes: UInt64 = 0
+        var pageIns: UInt64 = 0
+        var pageOuts: UInt64 = 0
+        var pressureLevel: PressureLevel = .normal
+        var topProcesses: [(name: String, bytes: UInt64)] = []
+        var onACPower: Bool = true
+    }
 
-    // MARK: - Swap & Paging
-    @Published var swapUsedBytes: UInt64 = 0
-    @Published var pageIns: UInt64 = 0
-    @Published var pageOuts: UInt64 = 0
-
-    // MARK: - Pressure
-    @Published var pressureLevel: PressureLevel = .normal
-
-    // MARK: - Top Processes
-    @Published var topProcesses: [(name: String, bytes: UInt64)] = []
-
-    // MARK: - Power State
-    @Published var onACPower: Bool = true
+    @Published var snapshot = MemorySnapshot()
 
     private var refreshTimer: Timer?
     private var runLoopSource: CFRunLoopSource?
@@ -37,7 +32,7 @@ final class MemoryMonitor: ObservableObject {
     }
 
     init() {
-        totalBytes = ProcessInfo.processInfo.physicalMemory
+        snapshot.totalBytes = ProcessInfo.processInfo.physicalMemory
         registerPowerNotifications()
         startPeriodicRefresh()
         refresh()
@@ -53,7 +48,7 @@ final class MemoryMonitor: ObservableObject {
     // MARK: - Polling
 
     private func startPeriodicRefresh() {
-        let interval = onACPower ? 5.0 : 15.0
+        let interval = snapshot.onACPower ? 5.0 : 15.0
         refreshTimer?.invalidate()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.refresh()
@@ -76,22 +71,21 @@ final class MemoryMonitor: ObservableObject {
         guard let context = context else { return }
         let monitor = Unmanaged<MemoryMonitor>.fromOpaque(context).takeUnretainedValue()
         DispatchQueue.main.async {
-            monitor.updatePowerState()
             monitor.startPeriodicRefresh()
             monitor.refresh()
         }
     }
 
-    private func updatePowerState() {
-        guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
-              let sources = IOPSCopyPowerSourcesList(snapshot)?.takeRetainedValue() as? [CFTypeRef]
+    private func updatePowerState(_ s: inout MemorySnapshot) {
+        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
+              let sources = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef]
         else { return }
 
         for ps in sources {
-            guard let dict = IOPSGetPowerSourceDescription(snapshot, ps)?
+            guard let dict = IOPSGetPowerSourceDescription(info, ps)?
                     .takeUnretainedValue() as? [String: Any] else { continue }
             if let state = dict[kIOPSPowerSourceStateKey as String] as? String {
-                onACPower = (state == kIOPSACPowerValue)
+                s.onACPower = (state == kIOPSACPowerValue)
             }
         }
     }
@@ -99,16 +93,18 @@ final class MemoryMonitor: ObservableObject {
     // MARK: - Refresh
 
     func refresh() {
-        readVMStats()
-        readSwap()
-        readTopProcesses()
-        updatePowerState()
-        updateComputedValues()
+        var s = snapshot
+        readVMStats(&s)
+        readSwap(&s)
+        readTopProcesses(&s)
+        updatePowerState(&s)
+        updateComputedValues(&s)
+        snapshot = s
     }
 
     // MARK: - VM Statistics
 
-    private func readVMStats() {
+    private func readVMStats(_ s: inout MemorySnapshot) {
         var info = vm_statistics64()
         var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.stride / MemoryLayout<integer_t>.stride)
         let host = mach_host_self()
@@ -122,13 +118,13 @@ final class MemoryMonitor: ObservableObject {
         guard result == KERN_SUCCESS else { return }
 
         let pageSize = UInt64(vm_kernel_page_size)
-        wiredBytes = UInt64(info.wire_count) * pageSize
-        activeBytes = UInt64(info.active_count) * pageSize
-        inactiveBytes = UInt64(info.inactive_count) * pageSize
-        compressedBytes = UInt64(info.compressor_page_count) * pageSize
-        freeBytes = UInt64(info.free_count) * pageSize
-        pageIns = UInt64(info.pageins)
-        pageOuts = UInt64(info.pageouts)
+        s.wiredBytes = UInt64(info.wire_count) * pageSize
+        s.activeBytes = UInt64(info.active_count) * pageSize
+        s.inactiveBytes = UInt64(info.inactive_count) * pageSize
+        s.compressedBytes = UInt64(info.compressor_page_count) * pageSize
+        s.freeBytes = UInt64(info.free_count) * pageSize
+        s.pageIns = UInt64(info.pageins)
+        s.pageOuts = UInt64(info.pageouts)
 
         // Activity Monitor formula:
         // App Memory = internal_page_count - purgeable_count
@@ -136,24 +132,24 @@ final class MemoryMonitor: ObservableObject {
         let internalBytes = UInt64(info.internal_page_count) * pageSize
         let purgeableBytes = UInt64(info.purgeable_count) * pageSize
         let appMemory = internalBytes > purgeableBytes ? internalBytes - purgeableBytes : 0
-        usedBytes = appMemory + wiredBytes + compressedBytes
-        availableBytes = totalBytes > usedBytes ? totalBytes - usedBytes : 0
+        s.usedBytes = appMemory + s.wiredBytes + s.compressedBytes
+        s.availableBytes = s.totalBytes > s.usedBytes ? s.totalBytes - s.usedBytes : 0
     }
 
     // MARK: - Swap
 
-    private func readSwap() {
+    private func readSwap(_ s: inout MemorySnapshot) {
         var swapUsage = xsw_usage()
         var size = MemoryLayout<xsw_usage>.size
         let result = sysctlbyname("vm.swapusage", &swapUsage, &size, nil, 0)
         if result == 0 {
-            swapUsedBytes = swapUsage.xsu_used
+            s.swapUsedBytes = swapUsage.xsu_used
         }
     }
 
     // MARK: - Top Processes
 
-    private func readTopProcesses() {
+    private func readTopProcesses(_ s: inout MemorySnapshot) {
         // Step 1: Get top 5 PIDs and memory from top (sorted by memory)
         let topTask = Process()
         topTask.executableURL = URL(fileURLWithPath: "/usr/bin/top")
@@ -224,7 +220,7 @@ final class MemoryMonitor: ObservableObject {
             results.append((name: name, bytes: entry.bytes))
         }
 
-        topProcesses = results
+        s.topProcesses = results
     }
 
     private func parseMemString(_ str: String) -> UInt64 {
@@ -245,15 +241,15 @@ final class MemoryMonitor: ObservableObject {
 
     // MARK: - Computed Values
 
-    private func updateComputedValues() {
+    private func updateComputedValues(_ s: inout MemorySnapshot) {
         // Pressure level
-        let usedFraction = totalBytes > 0 ? Double(usedBytes) / Double(totalBytes) : 0
+        let usedFraction = s.totalBytes > 0 ? Double(s.usedBytes) / Double(s.totalBytes) : 0
         if usedFraction > 0.90 {
-            pressureLevel = .critical
+            s.pressureLevel = .critical
         } else if usedFraction > 0.75 {
-            pressureLevel = .warning
+            s.pressureLevel = .warning
         } else {
-            pressureLevel = .normal
+            s.pressureLevel = .normal
         }
 
     }

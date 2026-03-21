@@ -24,7 +24,7 @@ struct MemBarApp: App {
     }
 
     private var pressureIcon: String {
-        switch monitor.pressureLevel {
+        switch monitor.snapshot.pressureLevel {
         case .normal: return "checkmark.circle"
         case .warning: return "exclamationmark.triangle"
         case .critical: return "xmark.circle"

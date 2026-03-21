@@ -53,13 +53,13 @@ private struct HeroSection: View {
 
                 Spacer()
 
-                PressureBadge(level: monitor.pressureLevel)
+                PressureBadge(level: monitor.snapshot.pressureLevel)
             }
         }
     }
 
     private var usedGBText: String {
-        let gb = Double(monitor.usedBytes) / 1_073_741_824
+        let gb = Double(monitor.snapshot.usedBytes) / 1_073_741_824
         return String(format: "%.1f", gb)
     }
 }
@@ -113,17 +113,17 @@ private struct UsageSection: View {
             DetailRow(
                 icon: "circle.fill",
                 label: "Used",
-                value: monitor.formatBytes(monitor.usedBytes)
+                value: monitor.formatBytes(monitor.snapshot.usedBytes)
             )
             DetailRow(
                 icon: "circle",
                 label: "Available",
-                value: monitor.formatBytes(monitor.availableBytes)
+                value: monitor.formatBytes(monitor.snapshot.availableBytes)
             )
             DetailRow(
                 icon: "square.stack.3d.up",
                 label: "Total",
-                value: monitor.formatBytes(monitor.totalBytes)
+                value: monitor.formatBytes(monitor.snapshot.totalBytes)
             )
         }
     }
@@ -138,12 +138,12 @@ private struct ProcessesSection: View {
         VStack(alignment: .leading, spacing: 6) {
             SectionHeader(title: "TOP PROCESSES", icon: "list.number")
 
-            if monitor.topProcesses.isEmpty {
+            if monitor.snapshot.topProcesses.isEmpty {
                 Text("No data")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             } else {
-                ForEach(Array(monitor.topProcesses.enumerated()), id: \.offset) { _, process in
+                ForEach(Array(monitor.snapshot.topProcesses.enumerated()), id: \.offset) { _, process in
                     DetailRow(
                         icon: "app",
                         label: process.name,
@@ -167,37 +167,37 @@ private struct DetailsSection: View {
             DetailRow(
                 icon: "lock.fill",
                 label: "Wired",
-                value: monitor.formatBytes(monitor.wiredBytes)
+                value: monitor.formatBytes(monitor.snapshot.wiredBytes)
             )
             DetailRow(
                 icon: "archivebox",
                 label: "Compressed",
-                value: monitor.formatBytes(monitor.compressedBytes)
+                value: monitor.formatBytes(monitor.snapshot.compressedBytes)
             )
             DetailRow(
                 icon: "bolt.fill",
                 label: "Active",
-                value: monitor.formatBytes(monitor.activeBytes)
+                value: monitor.formatBytes(monitor.snapshot.activeBytes)
             )
             DetailRow(
                 icon: "moon.fill",
                 label: "Inactive",
-                value: monitor.formatBytes(monitor.inactiveBytes)
+                value: monitor.formatBytes(monitor.snapshot.inactiveBytes)
             )
             DetailRow(
                 icon: "arrow.left.arrow.right",
                 label: "Swap Used",
-                value: monitor.formatBytes(monitor.swapUsedBytes)
+                value: monitor.formatBytes(monitor.snapshot.swapUsedBytes)
             )
             DetailRow(
                 icon: "arrow.down.circle",
                 label: "Page Ins",
-                value: formatCount(monitor.pageIns)
+                value: formatCount(monitor.snapshot.pageIns)
             )
             DetailRow(
                 icon: "arrow.up.circle",
                 label: "Page Outs",
-                value: formatCount(monitor.pageOuts)
+                value: formatCount(monitor.snapshot.pageOuts)
             )
         }
     }
