@@ -25,7 +25,9 @@ final class MemoryMonitor: ObservableObject {
     private var refreshTimer: Timer?
     private var runLoopSource: CFRunLoopSource?
     private let processQueue = DispatchQueue(label: "com.membar.processes", qos: .utility)
-    var popoverVisible = false
+    var popoverVisible = false {
+        didSet { startPeriodicRefresh() }
+    }
 
     enum PressureLevel: String {
         case normal = "Normal"
@@ -50,7 +52,12 @@ final class MemoryMonitor: ObservableObject {
     // MARK: - Polling
 
     private func startPeriodicRefresh() {
-        let interval = snapshot.onACPower ? 5.0 : 15.0
+        let interval: TimeInterval
+        if popoverVisible {
+            interval = 5.0
+        } else {
+            interval = snapshot.onACPower ? 30.0 : 60.0
+        }
         refreshTimer?.invalidate()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.refresh()
