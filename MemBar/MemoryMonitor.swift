@@ -24,6 +24,7 @@ final class MemoryMonitor: ObservableObject {
 
     private var refreshTimer: Timer?
     private var runLoopSource: CFRunLoopSource?
+    private let processQueue = DispatchQueue(label: "com.membar.processes", qos: .utility)
     var popoverVisible = false
 
     enum PressureLevel: String {
@@ -97,12 +98,19 @@ final class MemoryMonitor: ObservableObject {
         var s = snapshot
         readVMStats(&s)
         readSwap(&s)
-        if popoverVisible {
-            readTopProcesses(&s)
-        }
         updatePowerState(&s)
         updateComputedValues(&s)
         snapshot = s
+
+        if popoverVisible {
+            processQueue.async { [weak self] in
+                guard let self else { return }
+                let processes = self.fetchTopProcesses()
+                DispatchQueue.main.async {
+                    self.snapshot.topProcesses = processes
+                }
+            }
+        }
     }
 
     // MARK: - VM Statistics
@@ -152,7 +160,7 @@ final class MemoryMonitor: ObservableObject {
 
     // MARK: - Top Processes
 
-    private func readTopProcesses(_ s: inout MemorySnapshot) {
+    private func fetchTopProcesses() -> [(name: String, bytes: UInt64)] {
         // Step 1: Get top 5 PIDs and memory from top (sorted by memory)
         let topTask = Process()
         topTask.executableURL = URL(fileURLWithPath: "/usr/bin/top")
@@ -164,13 +172,13 @@ final class MemoryMonitor: ObservableObject {
         do {
             try topTask.run()
             topTask.waitUntilExit()
-        } catch { return }
+        } catch { return [] }
 
         let topData = topPipe.fileHandleForReading.readDataToEndOfFile()
-        guard let topOutput = String(data: topData, encoding: .utf8) else { return }
+        guard let topOutput = String(data: topData, encoding: .utf8) else { return [] }
 
         let topLines = topOutput.components(separatedBy: "\n")
-        guard let headerIndex = topLines.firstIndex(where: { $0.contains("PID") && $0.contains("MEM") }) else { return }
+        guard let headerIndex = topLines.firstIndex(where: { $0.contains("PID") && $0.contains("MEM") }) else { return [] }
 
         var pidMem: [(pid: String, bytes: UInt64)] = []
         for line in topLines.dropFirst(headerIndex + 1).prefix(5) {
@@ -185,7 +193,7 @@ final class MemoryMonitor: ObservableObject {
             }
         }
 
-        guard !pidMem.isEmpty else { return }
+        guard !pidMem.isEmpty else { return [] }
 
         // Step 2: Get full command names from ps for those PIDs
         let pids = pidMem.map { $0.pid }.joined(separator: ",")
@@ -199,10 +207,10 @@ final class MemoryMonitor: ObservableObject {
         do {
             try psTask.run()
             psTask.waitUntilExit()
-        } catch { return }
+        } catch { return [] }
 
         let psData = psPipe.fileHandleForReading.readDataToEndOfFile()
-        guard let psOutput = String(data: psData, encoding: .utf8) else { return }
+        guard let psOutput = String(data: psData, encoding: .utf8) else { return [] }
 
         // Build PID -> name map
         var nameMap: [String: String] = [:]
@@ -223,7 +231,7 @@ final class MemoryMonitor: ObservableObject {
             results.append((name: name, bytes: entry.bytes))
         }
 
-        s.topProcesses = results
+        return results
     }
 
     private func parseMemString(_ str: String) -> UInt64 {
